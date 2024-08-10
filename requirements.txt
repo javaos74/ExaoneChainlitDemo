@@ -1,0 +1,8 @@
+accelerate
+bitsandbytes
+torch
+transformers
+einops
+sentencepiece
+chainlit
+python-dotenv

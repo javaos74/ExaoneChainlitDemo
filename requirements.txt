@@ -6,3 +6,5 @@ einops
 sentencepiece
 chainlit
 python-dotenv
+fastapi
+uvicorn

@@ -1,10 +1,13 @@
-import chainlit as cl
-import os
-import time
-import torch
+from fastapi import FastAPI
+from pydantic import BaseModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 from threading import Thread
 from dotenv import load_dotenv
+import torch
+import os
+import json
+
+app = FastAPI()
 
 load_dotenv()
 
@@ -21,30 +24,28 @@ model = AutoModelForCausalLM.from_pretrained(
     trust_remote_code=True,
     ignore_mismatched_sizes=True)
 
-system_prompt='You are EXAONE model from LG AI Research, a helpful assistant.'
 conversation = []
 
-@cl.on_chat_start
-def on_chat_start():
-    conversation.append({"role": "system", "content": system_prompt})
+class ExaoneParam(BaseModel):
+    system_prompt: str  = "You are EXAONE model from LG AI Research, a helpful assistant."
+    user_prompt: str 
+    max_new_token: int = 4096
+    temperature: float = 0.1
+    top_p : int = 1
+    top_k : int = 50	
 
-@cl.on_chat_end
-def on_chat_end():
+@app.post("/exaone/chat/completion")
+async def post_generate( request: ExaoneParam):
     conversation = []
-    print("The user disconnected!")
+    conversation.append({"role": "system", "content": request.system_prompt})            
+    conversation.append({"role": "user", "content": request.user_prompt}) 
 
-@cl.on_message
-async def main(message: cl.Message):
-    # Your custom logic goes here...
-    msg = cl.Message(content="")
-    conversation.append({"role": "user", "content": message.content})
-
+    
     inputs = tokenizer.apply_chat_template(
         conversation,
         tokenize=True,
         add_generation_prompt=True,
         return_tensors="pt").to(device)
-
     streamer = TextIteratorStreamer(tokenizer, timeout=60.0, skip_prompt=True, skip_special_tokens=True)
     generate_kwargs = dict(
         input_ids=inputs, 
@@ -65,7 +66,11 @@ async def main(message: cl.Message):
     buffer = ""
     for new_text in streamer:
         buffer += new_text
-        await msg.stream_token( new_text)
+    
     conversation.append({"role": "assitant", "content": buffer})
-    await msg.send()
-   
+    return json.dumps( conversation)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    unicorn.run( app, host="0.0.0.0", port=5001)

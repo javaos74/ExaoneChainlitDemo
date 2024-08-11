@@ -49,12 +49,12 @@ async def post_generate( request: ExaoneParam):
     streamer = TextIteratorStreamer(tokenizer, timeout=60.0, skip_prompt=True, skip_special_tokens=True)
     generate_kwargs = dict(
         input_ids=inputs, 
-        max_new_tokens = 4096,
+        max_new_tokens = request.max_new_token,
         do_sample = True,
-        temperature = 0.1,
+        temperature = request.temperature,
         streamer = streamer,
-        top_p = 1,
-        top_k = 50,
+        top_p = request.top_p,
+        top_k = request.top_k,
         pad_token_id = 0,
         eos_token_id = 361, # 361
     )
@@ -68,7 +68,7 @@ async def post_generate( request: ExaoneParam):
         buffer += new_text
     
     conversation.append({"role": "assitant", "content": buffer})
-    return json.dumps( conversation)
+    return json.dumps( conversation, ensure_ascii=False)
 
 
 if __name__ == "__main__":
